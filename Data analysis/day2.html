@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الوحدة الثانية: البيانات الجغرافية وإدارتها</title>
+    <link rel="stylesheet" href="css/leaflet.css" />
+    <link href="css/font.css" rel="stylesheet">
+    <style>
+        :root {
+            --glass-bg: rgba(15, 23, 42, 0.08);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --primary-accent: #3b82f6;
+            --text-main: #1e293b;
+        }
+        body { font-family: 'Tajawal', sans-serif; background: #ffffff; color: var(--text-main); margin: 0; overflow-x: hidden; }
+        #map-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; }
+        #map { width: 100%; height: 100%; }
+        #scrolly { position: relative; z-index: 10; pointer-events: none; }
+        .step { min-height: 100vh; display: flex; align-items: center; justify-content: flex-start; padding: 0 5%; margin-bottom: 50vh; }
+        .narrative-panel { background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(16px) saturate(180%); -webkit-backdrop-filter: blur(16px) saturate(180%); border: 1px solid var(--glass-border); border-radius: 24px; padding: 40px; width: 450px; max-width: 85%; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1); pointer-events: auto; transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .step.active .narrative-panel { transform: scale(1.02); border-color: var(--primary-accent); }
+        .step.fullscreen { justify-content: center; padding: 0; }
+        .content-box { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 32px; padding: 60px; text-align: center; max-width: 800px; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15); pointer-events: auto; }
+        h1, h2, h3 { color: #0f172a; margin-top: 0; }
+        p { font-size: 1.15rem; line-height: 1.8; color: #334155; }
+        #progress-container { position: fixed; top: 0; left: 0; width: 100%; height: 6px; background: rgba(0, 0, 0, 0.05); z-index: 1000; }
+        #progress-bar { height: 100%; width: 0; background: linear-gradient(90deg, #3b82f6, #8b5cf6); transition: width 0.3s; }
+        #map-tooltip { position: fixed; z-index: 50; top: 30px; right: 30px; background: #b8c4eb; backdrop-filter: blur(12px); border: 1px solid var(--glass-border); padding: 15px 20px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08); font-size: 0.95rem; max-width: 300px; font-weight: 700; color: #1e293b; border-right: 5px solid #3b82f6; }
+        #steps-bar { position: fixed; top: 12px; left: 30%; transform: translateX(-50%); z-index: 999999; width: min(950px, 95%); padding: 12px 14px; border-radius: 18px; background: rgba(255,255,255,0.15); backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,0.25); box-shadow: 0 10px 35px rgba(0,0,0,0.25); }
+        #steps-title { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; color: #0f172a; font-weight: 800; font-size: 14px; }
+        #step-counter { font-weight: 900; font-size: 13px; opacity: 0.9; }
+        #step-icons { display: flex; gap: 8px; overflow-x: auto; scroll-behavior: smooth; white-space: nowrap; }
+        .step-icon { min-width: 34px; height: 34px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; font-weight: 900; color: rgba(15,23,42,0.75); background: rgba(255,255,255,0.25); border: 1px solid rgba(255,255,255,0.35); transition: 0.25s ease; }
+        .step-icon.active { background: rgba(59, 130, 246, 0.35); border: 1px solid rgba(59, 130, 246, 0.9); color: #0f172a; transform: scale(1.1); box-shadow: 0 0 18px rgba(59, 130, 246, 0.6); }
+        .step-icon.done { background: rgba(16, 185, 129, 0.25); border: 1px solid rgba(16, 185, 129, 0.7); color: #065f46; }
+        .story-nav { position: fixed; bottom: 30px; left: 30px; z-index: 1000; display: flex; gap: 15px; }
+        .nav-btn { background: #3280ff; color: white; border: none; padding: 14px 28px; border-radius: 16px; font-weight: 700; cursor: pointer; transition: 0.3s; box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2); }
+        .nav-btn:hover:not(:disabled) { background: #3b82f6; transform: translateY(-3px); }
+        .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div id="progress-container"><div id="progress-bar"></div></div>
+    <div id="map-tooltip">مرحباً بك في الوحدة الثانية 👋</div>
+    <div id="map-container"><div id="map"></div></div>
+    <div id="steps-bar">
+        <div id="steps-title">
+            <span id="step-label">الوحدة 2</span>
+            <span id="step-counter">1 / 50</span>
+        </div>
+        <div id="step-icons"></div>
+    </div>
+    <main id="scrolly">
+        <section id="s1" class="step fullscreen" data-step="s1">
+            <div class="content-box">
+                <h1>الوحدة الثانية: البيانات الجغرافية وإدارتها 💾</h1>
+                <p>دخولنا إلى عالم البيانات: من الجمع إلى التنظيم إلى الاستخدام</p>
+            </div>
+        </section>
+        <section id="s2" class="step" data-step="s2">
+            <div class="narrative-panel">
+                <h2>أهداف الوحدة الثانية</h2>
+                <p>ستتعلم كيفية: (1) جمع البيانات الجغرافية من مصادر مختلفة، (2) تنظيم البيانات في قواعد بيانات، (3) التعرف على أنظمة الإحداثيات المختلفة، (4) إنشاء طبقات جغرافية، (5) التحقق من جودة البيانات وتنقيتها.</p>
+            </div>
+        </section>
+        <section id="s3" class="step" data-step="s3">
+            <div class="narrative-panel">
+                <h2>دورة حياة البيانات الجغرافية</h2>
+                <p>البيانات الجغرافية تمر بدورة كاملة: التخطيط → الجمع → التنظيم → التنقية → التحليل → العرض → القرار. كل مرحلة حساسة جداً. خطأ صغير في البداية قد يؤثر على كل القرارات نهاية.</p>
+            </div>
+        </section>
+        <section id="s4" class="step" data-step="s4">
+            <div class="narrative-panel">
+                <h2>مصادر البيانات الجغرافية: الأقمار الصناعية</h2>
+                <p>الأقمار الصناعية توفر صوراً دقيقة لكل بقعة على الأرض. بعض الأقمار متخصصة في البيئة (مراقبة الغابات)، وأخرى في الطقس، وثالثة في الاستخدامات العسكرية. البيانات مجانية من وكالات الفضاء (وكالة ناسا، وكالة الفضاء الأوروبية).</p>
+            </div>
+        </section>
+        <section id="s5" class="step" data-step="s5">
+            <div class="narrative-panel">
+                <h2>مصادر البيانات الجغرافية: المسوحات الحكومية</h2>
+                <p>الحكومات تملك خرائط دقيقة للأراضي والممتلكات. الخرائط التاريخية تظهر كيف تطورت المدن. َْْْْْْْْْْْْْْْْْْْْْْْْْْْْْْْْْْْْْْْْْْْْْْْْبعض الدول تنشر هذه البيانات مفتوح المصدر، الأخرى تحتفظ بها لأسباب أمنية.</p>
+            </div>
+        </section>
+        <section id="s6" class="step" data-step="s6">
+            <div class="narrative-panel">
+                <h2>مصادر البيانات: منصات الجماعات التطوعية</h2>
+                <p>OpenStreetMap: مشروع تطوعي عملاق يضم خرائط دقيقة من ملايين المتطوعين. Wikipedia Geo Projects توفر بيانات ثقافية وتاريخية. هذه المنصات تثبت أننا لا نحتاج دائماً للحكومات لنملك بيانات جيدة.</p>
+            </div>
+        </section>
+        <section id="s7" class="step" data-step="s7">
+            <div class="narrative-panel">
+                <h2>مصادر البيانات: القياس الميداني المباشر</h2>
+                <p>أحياناً الطريقة الوحيدة للحصول على بيانات دقيقة هي الذهاب للميدان بنفسك: مسح شوارع الحي، عد الأشجار، قياس درجات الحرارة. جهاز GPS يحدد الموقع بدقة، وجهاز كاميرا يسجل الحالة البصرية. البيانات الميدانية غالباً ما تكون الأدق.</p>
+            </div>
+        </section>
+        <section id="s8" class="step" data-step="s8">
+            <div class="narrative-panel">
+                <h2>تنسيقات البيانات الجغرافية المختلفة</h2>
+                <p>Shapefile: الصيغة التقليدية الأكثر استخداماً. GeoJSON: صيغة حديثة قابلة للويب. GeoTIFF: صيغة للصور الفضائية. CSV مع الإحداثيات: صيغة بسيطة. اختيار الصيغة الصحيحة يؤثر على كفاءة التحليل.</p>
+            </div>
+        </section>
+        <section id="s9" class="step" data-step="s9">
+            <div class="narrative-panel">
+                <h2>أنظمة الإحداثيات: WGS84 (نظام GPS)</h2>
+                <p>معظم أجهزة GPS تستخدم WGS84. الخط والعمود يعطي موقعاً فريداً على الأرض. مثلاً: N 33.5138, E 36.2765 هو موقع محدد في سوريا. معرفة الإحداثيات الصحيحة ضرورية لأي تحليل جغرافي.</p>
+            </div>
+        </section>
+        <section id="s10" class="step" data-step="s10">
+            <div class="narrative-panel">
+                <h2>أنظمة الإحداثيات: الإسقاطات المحلية</h2>
+                <p>بعض الدول تستخدم إسقاطات محلية لدقة أعلى في منطقتها. مصر تستخدم نظام إسقاط مصري خاص. التحويل بين الأنظمة المختلفة يمكن أن يسبب أخطاء إذا لم تكن حذراً. برمجيات GIS تتعامل مع هذا تلقائياً.</p>
+            </div>
+        </section>
+        <section id="s11" class="step" data-step="s11">
+            <div class="narrative-panel">
+                <h2>إنشاء قاعدة بيانات جغرافية</h2>
+                <p>قاعدة البيانات تجمع بين الجغرافيا (الموقع) والمعلومات (البيانات الوصفية). مثلاً: مستشفى = النقطة الجغرافية + اسم المستشفى + عدد الأسرة + التخصص الرئيسي + رقم الاتصال. هذا التكامل يسمح بتحليلات معقدة.</p>
+            </div>
+        </section>
+        <section id="s12" class="step" data-step="s12">
+            <div class="narrative-panel">
+                <h2>التحقق من جودة البيانات</h2>
+                <p>كيف تعرف أن البيانات صحيحة؟ 1) المقارنة مع بيانات أخرى معروفة، 2) الفحص البصري على الخريطة، 3) البحث عن القيم الشاذة (Outliers)، 4) مقابلة ميدانية عينة. كل هذا استثمار في الجودة.</p>
+            </div>
+        </section>
+        <section id="s13" class="step" data-step="s13">
+            <div class="narrative-panel">
+                <h2>تنظيف البيانات (Data Cleaning)</h2>
+                <p>الواقع أن معظم البيانات الحقيقية "غير نظيفة": قيم ناقصة، تكرارات، أخطاء إملائية، إحداثيات خاطئة. تنقية البيانات قد تأخذ 80% من وقت المشروع! لكنها ضرورية لنتائج موثوقة.</p>
+            </div>
+        </section>
+        <section id="s14" class="step" data-step="s14">
+            <div class="narrative-panel">
+                <h2>الطبقات الجغرافية (Layers)</h2>
+                <p>كل طبقة مثل ورقة شفافة: طبقة الطرق، طبقة المباني، طبقة المياه. تراكمها ينتج خريطة كاملة. المزايا: مرونة (يمكن اظهار/اخفاء طبقات)، كفاءة (كل طبقة لها نوع بيانات مخصص)، إدارة (سهولة التحديث).</p>
+            </div>
+        </section>
+        <section id="s15" class="step" data-step="s15">
+            <div class="narrative-panel">
+                <h2>الطبقات المتجهة (Vector Layers)</h2>
+                <p>تمثل أشكال هندسية: نقاط (Points) للمناطق الصغيرة، خطوط (Lines) للطرق والأنهار، مضلعات (Polygons) للمناطق الكبيرة. كل شكل يمكن أن يحمل معلومات (Attributes). نقطة = موقع مدرسة، خط = شارع رئيسي، مضلع = حي سكني.</p>
+            </div>
+        </section>
+        <section id="s16" class="step" data-step="s16">
+            <div class="narrative-panel">
+                <h2>الطبقات المشبكة (Raster Layers)</h2>
+                <p>صورة صغيرة تغطي مساحة واسعة، كل خلية صغيرة (Pixel) تحمل قيمة. صور الأقمار الصناعية طبقات مشبكة. المزايا: تمثيل دقيق للظواهر المستمرة (درجة حرارة، رطوبة، ارتفاع). العيب: تحتاج مساحة تخزين كبيرة.</p>
+            </div>
+        </section>
+        <section id="s17" class="step" data-step="s17">
+            <div class="narrative-panel">
+                <h2>الجداول والبيانات الوصفية (Attributes)</h2>
+                <p>كل معالم جغرافية لها جدول بيانات مرتبط يحمي معلومات: اسم المعلم، تاريخ الإنشاء، الحالة، المالك، إلخ. هذا التكامل بين الجغرافيا والبيانات هو قوة GIS الحقيقية.</p>
+            </div>
+        </section>
+        <section id="s18" class="step" data-step="s18">
+            <div class="narrative-panel">
+                <h2>الفهرس المكاني (Spatial Index)</h2>
+                <p>الفهرس سريع جداً البحث عن البيانات. مثل فهرس الكتاب: بدل قراءة الكتاب كله، تبحث في الفهرس عن الموضوع. موجود في GIS أيضاً لتسريع الاستعلامات المكانية.</p>
+            </div>
+        </section>
+        <section id="s19" class="step" data-step="s19">
+            <div class="narrative-panel">
+                <h2>إدارة إصدارات البيانات</h2>
+                <p>البيانات تتغير مع الوقت: شارع جديد يُفتتح، مبنى قديم يُهدم. كيف تتعامل مع الإصدارات المختلفة؟ الحل: حفظ التاريخ (Timestamp) لكل تعديل. GIS الحديثة تدعم "Version Control" مثل البرامج.</p>
+            </div>
+        </section>
+        <section id="s20" class="step" data-step="s20">
+            <div class="narrative-panel">
+                <h2>قواعد البيانات الجغرافية (Spatial Databases)</h2>
+                <p>PostgreSQL مع PostGIS: قاعدة بيانات قوية مفتوحة المصدر. Oracle Spatial:  قوية لكن مكلفة. MongoDB: قاعدة بيانات غير تقليدية تدعم البيانات الجغرافية. كل منها لها استخدامات مختلفة.</p>
+            </div>
+        </section>
+        <section id="s21" class="step" data-step="s21">
+            <div class="narrative-panel">
+                <h2>التمرين الأول: تحميل وفحص البيانات</h2>
+                <p>المهمة: حمّل خريطة من OpenStreetMap أو أي مصدر مفتوح. افتحها في QGIS (مجاني). لاحظ الطبقات المختلفة. فتش الجدول الملصق بكل طبقة. هذا سيعطيك فهماً حقيقياً لكيفية تنظيم البيانات.</p>
+            </div>
+        </section>
+        <section id="s22" class="step" data-step="s22">
+            <div class="narrative-panel">
+                <h2>التمرين الثاني: إنشاء قاعدة بيانات بسيطة</h2>
+                <p>المهمة: أنشئ جدول بسيط (Excel يكفي) يحمي معلومات عن 10 مقاهٍ في حيك: اسم المقهى، الموقع (خط وعمود)، نوع الخدمة، ساعات العمل. ثم استيرد هذه البيانات إلى خريطة (Google My Maps). هذا التمرين يعلمك الربط بين البيانات والجغرافيا.</p>
+            </div>
+        </section>
+        <section id="s23" class="step" data-step="s23">
+            <div class="narrative-panel">
+                <h2>التمرين الثالث: تنظيف البيانات</h2>
+                <p>المهمة: حمّل قائمة مدارس مثل (CSV) وجد الأخطاء: مدارس بدون موقع، إحداثيات خاطئة (خارج حدود البلد)، أسماء مكررة. أصلح الأخطاء ووثّق كل تصحيح. الهدف: فهم عملي لتحديات البيانات الحقيقية.</p>
+            </div>
+        </section>
+        <section id="s24" class="step" data-step="s24">
+            <div class="narrative-panel">
+                <h2>مشروع الوحدة الثانية: خريطة تفاعلية</h2>
+                <p>المشروع: أنشئ خريطة تفاعلية لحيك بها 3 طبقات: (1) الطرق، (2) المرافق العامة (مدارس، مستشفيات، مراكز شرطة)، (3) المناطق الخضراء. يجب أن تكون كل طبقة قابلة للإظهار والإخفاء. أضف معلومات (Popups) عند النقر على كل معلم.</p>
+            </div>
+        </section>
+        <section id="s25" class="step" data-step="s25">
+            <div class="narrative-panel">
+                <h2>معايير التقييم - الجودة الأكاديمية</h2>
+                <p>1. الاكتمال: هل غطيت كل الطبقات المطلوبة؟ 2. الدقة: هل الموقعات صحيحة؟ 3. التنظيم: هل البيانات منظمة ومنقاة جيداً؟ 4. التوثيق: هل وثقت مصادر البيانات والتعديلات؟ 5. الاحترافية: هل الخريطة تبدو احترافية؟</p>
+            </div>
+        </section>
+        <section id="s26" class="step" data-step="s26">
+            <div class="narrative-panel">
+                <h2>التحديات العملية في إدارة البيانات</h2>
+                <p>حجم البيانات الهائل: مدينة كبيرة قد تحتوي مليارات البيانات. التحديثات المستمرة: المدن تتغير باستمرار. توحيد البيانات: بيانات من مصادر مختلفة بأشكال مختلفة. الخصوصية والأمان: حماية بيانات المواطنين.</p>
+            </div>
+        </section>
+        <section id="s27" class="step" data-step="s27">
+            <div class="narrative-panel">
+                <h2>حلول تقنية: السحابة (Cloud)</h2>
+                <p>ArcGIS Online من Esri: محفظة سحابية للبيانات والخرائط. Google Earth Engine: محرك قوي للبيانات الضخمة. AWS S3: تخزين مرن وميسور التكلفة. السحابة تحل مشاكل التخزين والمشاركة والنسخ الاحتياطي.</p>
+            </div>
+        </section>
+        <section id="s28" class="step" data-step="s28">
+            <div class="narrative-panel">
+                <h2>الأتمتة والبرمجة</h2>
+                <p>Python و R: لغات برمجية قوية لتحليل البيانات الجغرافية. JavaScript: لتطبيقات الويب التفاعلية. أتمتة العمليات المتكررة توفر الوقت والأخطاء. مثلاً: تحديث البيانات تلقائياً كل يوم.</p>
+            </div>
+        </section>
+        <section id="s29" class="step" data-step="s29">
+            <div class="narrative-panel">
+                <h2>المعايير الدولية للبيانات الجغرافية</h2>
+                <p>ISO 19115: معيار دولي لتوصيف البيانات الجغرافية. ISO 19125: معيار تمثيل الأشكال الهندسية. هذه المعايير تضمان التوافق بين الأنظمة المختلفة والعالمية المشتركة.</p>
+            </div>
+        </section>
+        <section id="s30" class="step" data-step="s30">
+            <div class="narrative-panel">
+                <h2>الخلاصة: إدارة البيانات = أساس كل شيء</h2>
+                <p>بيانات جيدة = تحليلات موثوقة = قرارات صائبة. الاستثمار في جودة البيانات ليس هدراً، بل استثمار في نجاح المشروع. كل ساعة تقضيها في تنقية البيانات توفر يوماً من المشاكل لاحقاً.</p>
+            </div>
+        </section>
+        <section id="s31" class="step fullscreen" data-step="s31">
+            <div class="content-box">
+                <h1 style="color: #10b981;">أتممت الوحدة الثانية بنجاح! 🎉</h1>
+                <p>الآن تفهم أهمية البيانات الجغرافية وكيفية إدارتها بشكل احترافي.</p>
+                <div style="margin-top: 30px;"><a href="day3.html" class="nav-btn" style="text-decoration: none;">الوحدة الثالثة ➔</a></div>
+            </div>
+        </section>
+        <section id="s32" class="step fullscreen" data-step="s32">
+            <div class="content-box">
+                <h2>نلتقي في الوحدة الثالثة...</h2>
+                <p>موضوع الوحدة الثالثة: "تمثيل وإخراج الخرائط" - كيفية تحويل البيانات إلى خرائط احترافية جميلة</p>
+            </div>
+        </section>
+        <!-- محتوى إضافي ذو صلة بالوحدة الثانية -->
+        <section id="s33" class="step" data-step="s33"><div class="narrative-panel"><h2>حالة دراسية: إدارة البيانات في المدن الذكية</h2><p>مدن مثل دبي وسنغافورة تستخدم GIS لإدارة ملايين نقاط البيانات: حركة المرور، الكهرباء، المياه. نظام متكامل يجمع بيانات من ملايين الاستشعارات لحظياً.</p></div></section>
+        <section id="s34" class="step" data-step="s34"><div class="narrative-panel"><h2>الأخطاء الشائعة في إدارة البيانات</h2><p>الخطأ الأول: عدم التحقق من البيانات قبل الاستخدام. الخطأ الثاني: انتظار البيانات المثالية (لا توجد!). الخطأ الثالث: عدم توثيق التغييرات والتعديلات. كل هذه تؤدي لنتائج مشبوهة.</p></div></section>
+        <section id="s35" class="step" data-step="s35"><div class="narrative-panel"><h2>التعامل مع البيانات المفقودة</h2><p>عندما تنقص البيانات من بعض المناطق: يمكن استخدام الاستيفاء (Interpolation)، أو استبعاد المناطق الناقصة، أو استخدام بيانات بديلة. الحل يعتمد على تأثير البيانات المفقودة على النتائج.</p></div></section>
+        <section id="s36" class="step" data-step="s36"><div class="narrative-panel"><h2>توحيد البيانات من مصادر مختلفة</h2><p>قد تأتي البيانات من حكومات مختلفة أو شركات خاصة، بأشكال وأنظمة إحداثيات مختلفة. التحدي: دمجها في قاعدة بيانات موحدة دون فقد المعلومات أو الدقة.</p></div></section>
+        <section id="s37" class="step" data-step="s37"><div class="narrative-panel"><h2>الخصوصية والأمان في البيانات الجغرافية</h2><p>بيانات المواقع حساسة جداً. عناوين المنازل، الحدود الإدارية، مواقع البنية التحتية - كل هذا قد يكون معلومات استراتيجية. الحكومات يجب أن توازن بين الشفافية والأمان.</p></div></section>
+        <section id="s38" class="step" data-step="s38"><div class="narrative-panel"><h2>المراقبة المستمرة لجودة البيانات</h2><p>إدارة البيانات لا تنتهي؛ يجب المراقبة المستمرة: هل البيانات تُحدث منتظمة؟ هل الأخطاء تظهر؟ هل المستخدمون يشكون من عدم الدقة؟ كل هذا يتطلب فريق متخصص.</p></div></section>
+        <section id="s39" class="step" data-step="s39"><div class="narrative-panel"><h2>التدريب والتعليم المستمر</h2><p>موظفو إدارة البيانات يحتاجون تدريب مستمر على أدوات جديدة. معايير دولية جديدة تظهر باستمرار. البرمجيات تتطور. المهنة تتطلب تعلماً لا ينتهي.</p></div></section>
+        <section id="s40" class="step" data-step="s40"><div class="narrative-panel"><h2>توثيق البيانات (Data Metadata)</h2><p>لكل مجموعة بيانات يجب توثيق شامل: من أنتجها؟ متى؟ ما مصدرها؟ ما دقتها؟ ما حدود الاستخدام؟ التوثيق الجيد يحافظ على جودة البيانات عبر السنوات.</p></div></section>
+        <section id="s41" class="step" data-step="s41"><div class="narrative-panel"><h2>المعايير المهنية والشهادات</h2><p>هناك دورات واعتماديات عالمية في GIS وإدارة البيانات. Esri توفر شهادات معتمدة. المعايير الدولية ISO تحدد أفضل الممارسات. الحصول على شهادة يزيد قيمة المهنيين.</p></div></section>
+        <section id="s42" class="step" data-step="s42"><div class="narrative-panel"><h2>تطبيق عملي: نظام إدارة مياه الشرب</h2><p>شركة مياه تستخدم GIS لتتبع: خطوط الأنابيب، محطات الضخ، جودة المياه في كل منطقة. البيانات الدقيقة تساعد على اكتشاف التسريبات بسرعة وتقليل الهدر.</p></div></section>
+        <section id="s43" class="step" data-step="s43"><div class="narrative-panel"><h2>تطبيق عملي: شركات التوصيل</h2><p>شركات مثل Amazon و Uber تستخدم GIS بشكل هائل. من بيانات المتاجع حتى بيانات الطرق الحية. إدارة هذه البيانات بكفاءة = توفير ملايين الدولارات.</p></div></section>
+        <section id="s44" class="step" data-step="s44"><div class="narrative-panel"><h2>تطبيق عملي: الدراسات البيئية</h2><p>دراسة تأثير المصانع على جودة الهواء والماء: تجميع بيانات من مئات المحطات، معالجتها، تحليلها مكانياً. النتائج توجه القرارات البيئية للحكومات.</p></div></section>
+        <section id="s45" class="step" data-step="s45"><div class="narrative-panel"><h2>المستقبل: الذكاء الاصطناعي وإدارة البيانات</h2><p>AI سيغير طريقة إدارة البيانات: كشف الأخطاء تلقائياً، اقتراح التحسينات، توقع احتياجات البيانات. الدمج بين GIS و AI سيفتح آفاق جديدة تماماً.</p></div></section>
+        <section id="s46" class="step" data-step="s46"><div class="narrative-panel"><h2>الخلاصة العملية</h2><p>إدارة البيانات الجغرافية مهارة حيوية في أي مشروع GIS. الاستثمار في جودة البيانات ليس اختياري بل ضرورة. البيانات السيئة تؤدي لقرارات سيئة، والنتائج قد تكون مكلفة جداً.</p></div></section>
+        <section id="s47" class="step" data-step="s47"><div class="narrative-panel"><h2>نصيحة للطلاب: ابدأ بالبيانات</h2><p>قبل أن تتعلم البرمجيات المعقدة: افهم البيانات بعمق. تمارين بسيطة جداً مع بيانات حقيقية أفضل من برمجيات معقدة مع بيانات وهمية.</p></div></section>
+        <section id="s48" class="step" data-step="s48"><div class="narrative-panel"><h2>موارد إضافية للتعمق</h2><p>كتب: "GIS Data Formats, Spatial Databases, and GIS Standards". متاحة مجاناً عبر مكتبات الجامعات. دورات Esri توفر تدريب متخصص في إدارة البيانات.</p></div></section>
+        <section id="s49" class="step fullscreen" data-step="s49"><div class="content-box"><h1 style="color: #10b981;">أتممت الوحدة الثانية بنجاح! 🎉</h1><p>أنت الآن تفهم أهمية البيانات الجغرافية وكل تحديات إدارتها.</p></div></section>
+        <section id="s50" class="step fullscreen" data-step="s50"><div class="content-box"><h2>شكراً على اجتهادك!</h2><p>الوحدة الثالثة تنتظرك: "تمثيل وإخراج الخرائط" - حيث ستتعلم كيفية تحويل كل هذه البيانات إلى خرائط احترافية وجميلة.</p><div style="margin-top: 30px;"><a href="day3.html" class="nav-btn" style="text-decoration: none;">الوحدة الثالثة ➔</a></div></section>
+    </main>
+    <div class="story-nav">
+        <button id="prev-btn" class="nav-btn" disabled>السابق</button>
+        <button id="next-btn" class="nav-btn">التالي</button>
+        <button id="restart-btn" class="nav-btn">إعادة</button>
+    </div>
+    <script type="module">
+        import L from 'https://esm.sh/leaflet';
+        const map = L.map('map', { zoomControl: false, scrollWheelZoom: false, dragging: false, attributionControl: false, doubleClickZoom: false }).setView([34.8021, 38.9968], 7);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png').addTo(map);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', { zIndex: 1000 }).addTo(map);
+        const analysisLayer = L.layerGroup().addTo(map);
+        const tooltipBox = document.getElementById("map-tooltip");
+        const progressBar = document.getElementById("progress-bar");
+        const iconsContainer = document.getElementById("step-icons");
+        const stepCounter = document.getElementById("step-counter");
+        function setTooltip(text) { tooltipBox.innerHTML = text; }
+        function clear() { analysisLayer.clearLayers(); }
+        for (let i = 1; i <= 50; i++) {
+            const icon = document.createElement('div');
+            icon.className = 'step-icon'; icon.innerText = i; icon.id = `icon-s${i}`;
+            icon.onclick = () => document.getElementById(`s${i}`)?.scrollIntoView({ behavior: 'smooth' });
+            iconsContainer.appendChild(icon);
+        }
+        const steps = document.querySelectorAll(".step");
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const id = entry.target.id;
+                    const num = parseInt(id.replace('s', ''));
+                    progressBar.style.width = (num / 50 * 100) + "%";
+                    setTooltip(`الشريحة ${num}: الوحدة الثانية`);
+                    steps.forEach(s => s.classList.remove('active'));
+                    entry.target.classList.add('active');
+                    document.querySelectorAll('.step-icon').forEach(icon => {
+                        const iconNum = parseInt(icon.id.replace('icon-s', ''));
+                        icon.classList.toggle('active', iconNum === num);
+                        icon.classList.toggle('done', iconNum < num);
+                    });
+                    stepCounter.innerText = `${num} / 50`;
+                    const activeIcon = document.getElementById(`icon-s${num}`);
+                    if(activeIcon) activeIcon.scrollIntoView({behavior: "smooth", inline: "center", block: "nearest"});
+                    document.getElementById('prev-btn').disabled = (num === 1);
+                    document.getElementById('next-btn').disabled = (num === 50);
+                }
+            });
+        }, { threshold: 0.6 });
+        steps.forEach(s => observer.observe(s));
+        document.getElementById('next-btn').onclick = () => [...steps].find(s => s.classList.contains('active'))?.nextElementSibling?.scrollIntoView({ behavior: 'smooth' });
+        document.getElementById('prev-btn').onclick = () => [...steps].find(s => s.classList.contains('active'))?.previousElementSibling?.scrollIntoView({ behavior: 'smooth' });
+        document.getElementById('restart-btn').onclick = () => steps[0].scrollIntoView({ behavior: 'smooth' });
+    </script>
+</body>
+</html>

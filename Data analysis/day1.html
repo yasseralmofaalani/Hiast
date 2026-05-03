@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الوحدة الأولى: مقدمة في الجغرافيا وGIS والبيانات الكبيرة</title>
+
+    
+     <link rel="stylesheet" href="css/leaflet.css" />
+     <link href="css/font.css" rel="stylesheet">
+
+    <style>
+        :root {
+            --glass-bg: rgba(15, 23, 42, 0.08);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --primary-accent: #3b82f6;
+            --text-main: #1e293b;
+        }
+
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background: #ffffff;
+            color: var(--text-main);
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        #map-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        #scrolly {
+            position: relative;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .step {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 0 5%;
+            margin-bottom: 50vh;
+        }
+
+        .narrative-panel {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(16px) saturate(180%);
+            -webkit-backdrop-filter: blur(16px) saturate(180%);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 40px;
+            width: 450px;
+            max-width: 85%;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
+            pointer-events: auto;
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .step.active .narrative-panel {
+            transform: scale(1.02);
+            border-color: var(--primary-accent);
+        }
+
+        .step.fullscreen {
+            justify-content: center;
+            padding: 0;
+        }
+
+        .content-box {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 32px;
+            padding: 60px;
+            text-align: center;
+            max-width: 800px;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15);
+            pointer-events: auto;
+        }
+
+        h1, h2, h3 {
+            color: #0f172a;
+            margin-top: 0;
+        }
+
+        p {
+            font-size: 1.15rem;
+            line-height: 1.8;
+            color: #334155;
+        }
+
+        #progress-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 6px;
+            background: rgba(0, 0, 0, 0.05);
+            z-index: 1000;
+        }
+
+        #progress-bar {
+            height: 100%;
+            width: 0;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            transition: width 0.3s;
+        }
+
+        #map-tooltip {
+            position: fixed;
+            z-index: 50;
+            top: 30px;
+            right: 30px;
+            background: #b8c4eb;
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            padding: 15px 20px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            font-size: 0.95rem;
+            max-width: 300px;
+            font-weight: 700;
+            color: #1e293b;
+            border-right: 5px solid #3b82f6;
+        }
+
+        #steps-bar {
+            position: fixed;
+            top: 12px;
+            left: 30%;
+            transform: translateX(-50%);
+            z-index: 999999;
+            width: min(950px, 95%);
+            padding: 12px 14px;
+            border-radius: 18px;
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(255,255,255,0.25);
+            box-shadow: 0 10px 35px rgba(0,0,0,0.25);
+        }
+
+        #steps-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            color: #0f172a;
+            font-weight: 800;
+            font-size: 14px;
+        }
+
+        #step-counter {
+            font-weight: 900;
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        #step-icons {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            scroll-behavior: smooth;
+            white-space: nowrap;
+        }
+
+        .step-icon {
+            min-width: 34px;
+            height: 34px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 900;
+            color: rgba(15,23,42,0.75);
+            background: rgba(255,255,255,0.25);
+            border: 1px solid rgba(255,255,255,0.35);
+            transition: 0.25s ease;
+        }
+
+        .step-icon.active {
+            background: rgba(59, 130, 246, 0.35);
+            border: 1px solid rgba(59, 130, 246, 0.9);
+            color: #0f172a;
+            transform: scale(1.1);
+            box-shadow: 0 0 18px rgba(59, 130, 246, 0.6);
+        }
+
+        .step-icon.done {
+            background: rgba(16, 185, 129, 0.25);
+            border: 1px solid rgba(16, 185, 129, 0.7);
+            color: #065f46;
+        }
+
+        .story-nav {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            z-index: 1000;
+            display: flex;
+            gap: 15px;
+        }
+
+        .nav-btn {
+            background: #3280ff;
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.3s;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .nav-btn:hover:not(:disabled) {
+            background: #3b82f6;
+            transform: translateY(-3px);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="progress-container">
+        <div id="progress-bar"></div>
+    </div>
+    <div id="map-tooltip">مرحباً بك في الوحدة الأولى 👋</div>
+    <div id="map-container">
+        <div id="map"></div>
+    </div>
+    <div id="steps-bar">
+        <div id="steps-title">
+            <span id="step-label">الوحدة 1</span>
+            <span id="step-counter">1 / 50</span>
+        </div>
+        <div id="step-icons"></div>
+    </div>
+
+    <main id="scrolly">
+        <!-- الوحدة 1: 50 شريحة أكاديمية -->
+        <section id="s1" class="step fullscreen" data-step="s1">
+            <div class="content-box">
+                <h1>الوحدة 1: مقدمة في الجغرافيا وGIS والبيانات الكبيرة 🌍</h1>
+                <p>رحلتنا نحو فهم العالم من خلال البيانات المكانية والتحليل الجغرافي المتقدم</p>
+            </div>
+        </section>
+
+        <section id="s2" class="step" data-step="s2">
+            <div class="narrative-panel">
+                <h2>أهداف التعلم من الوحدة الأولى</h2>
+                <p>بعد انتهائك من هذه الوحدة، ستتمكن من: (1) فهم المفاهيم الأساسية للجغرافيا وGIS، (2) تحديد أنواع البيانات الجغرافية، (3) اكتشاف تطبيقات GIS في حياتنا اليومية، (4) البدء في تحليل الخرائط والبيانات المكانية.</p>
+            </div>
+        </section>
+
+        <section id="s3" class="step" data-step="s3">
+            <div class="narrative-panel">
+                <h2>ما هي الجغرافيا في القرن الحادي والعشرين؟</h2>
+                <p>الجغرافيا ليست مجرد دراسة الخرائط والمدن. هي علم يحلل العلاقات بين الناس والمكان، يفسر الأنماط المكانية للظواهر الطبيعية والبشرية، ويوفر حلولاً لتحديات التنمية والبيئة والأمن القومي.</p>
+            </div>
+        </section>
+
+        <section id="s4" class="step" data-step="s4">
+            <div class="narrative-panel">
+                <h2>تعريف نظم المعلومات الجغرافية (GIS)</h2>
+                <p>GIS هو نظام متكامل يجمع بين البيانات الجغرافية والأدوات التحليلية لالتقاط وتخزين وتنظيم وتحليل وعرض المعلومات المرتبطة بمواقع محددة على سطح الأرض. إنه جسر بين العالم الحقيقي والبيانات الرقمية.</p>
+            </div>
+        </section>
+
+        <section id="s5" class="step" data-step="s5">
+            <div class="narrative-panel">
+                <h2>لماذا نحتاج إلى GIS؟</h2>
+                <p>80% من البيانات التي ينتجها الإنسان لها بعد مكاني (geographic). GIS يسمح لنا بفهم هذه البيانات في سياقها المكاني، اكتشاف الأنماط المخفية، وتوليد مؤشرات قرارية قوية للحكومات والمؤسسات والأفراد.</p>
+            </div>
+        </section>
+
+        <section id="s6" class="step" data-step="s6">
+            <div class="narrative-panel">
+                <h2>البيانات الجغرافية: أنواعها</h2>
+                <p>البيانات الجغرافية نوعان: (1) بيانات متجهة (Vector) تمثل الظواهر بنقاط وخطوط ومضلعات، (2) بيانات مشبكة (Raster) تمثل الظواهر بخلايا صغيرة (مثل صور الأقمار الصناعية). كل نوع له استخدامات وفوائد مختلفة.</p>
+            </div>
+        </section>
+
+        <section id="s7" class="step" data-step="s7">
+            <div class="narrative-panel">
+                <h2>الإحداثيات والموقع: أساس كل شيء</h2>
+                <p>الموقع الجغرافي يُحدد بالإحداثيات (خط الطول وخط العرض). كل نقطة على الأرض لها إحداثيات فريدة. هذا النظام العالمي (Coordinate Systems) يسمح لنا بتحديد المواقع بدقة وربط البيانات المختلفة بنفس الموقع.</p>
+            </div>
+        </section>
+
+        <section id="s8" class="step" data-step="s8">
+            <div class="narrative-panel">
+                <h2>الطبقات الجغرافية (Layers): بناء الواقع رقمياً</h2>
+                <p>الخريطة الرقمية تتكون من طبقات متعددة: طبقة الطرق، طبقة التضاريس، طبقة المباني، طبقة المياه، إلخ. كل طبقة تمثل ظاهرة جغرافية محددة. بتراكب هذه الطبقات، نستطيع تمثيل تعقيد العالم الحقيقي ببساطة رقمية.</p>
+            </div>
+        </section>
+
+        <section id="s9" class="step" data-step="s9">
+            <div class="narrative-panel">
+                <h2>الاستشعار عن بعد: رؤية الأرض من السماء</h2>
+                <p>الأقمار الصناعية والطائرات المسيرة توفر صوراً دقيقة للأرض. هذه الصور تحتوي على معلومات غنية: نوع الغطاء الأرضي، درجات الحرارة، الرطوبة، التغيرات المناخية. GIS يحول هذه الصور إلى بيانات قابلة للتحليل والاستشارة.</p>
+            </div>
+        </section>
+
+        <section id="s10" class="step" data-step="s10">
+            <div class="narrative-panel">
+                <h2>قواعد البيانات الجغرافية: تنظيم المعلومات</h2>
+                <p>قاعدة البيانات الجغرافية تجمع بين المعلومات الجغرافية والبيانات الوصفية. مثلاً: نقطة الموقع (المكان) مع معلومات عن المبنى (الاسم، الاستخدام، عمره). هذا التكامل يسمح بتحليلات معقدة وتقارير شاملة.</p>
+            </div>
+        </section>
+
+        <section id="s11" class="step" data-step="s11">
+            <div class="narrative-panel">
+                <h2>البيانات الصغيرة مقابل البيانات الكبيرة (Big Data)</h2>
+                <p>البيانات التقليدية: مئات الآلاف من السجلات. البيانات الكبيرة: مليارات البيانات المكانية من الأقمار والمستشعرات والهواتف. التحدي: معالجة هذا الحجم الضخم بسرعة مقبولة واستخراج الإشارات المهمة من الضوضاء البيانية.</p>
+            </div>
+        </section>
+
+        <section id="s12" class="step" data-step="s12">
+            <div class="narrative-panel">
+                <h2>GIS في التخطيط الحضري</h2>
+                <p>المدن الكبرى تستخدم GIS لتخطيط توسعاتها: أين تبني الطرق الجديدة؟ أين تضع محطات المياه والكهرباء؟ كيف توازن بين النمو الحضري والمساحات الخضراء؟ GIS يوفر الخرائط والتحليلات التي توجه هذه القرارات الحساسة.</p>
+            </div>
+        </section>
+
+        <section id="s13" class="step" data-step="s13">
+            <div class="narrative-panel">
+                <h2>GIS وحماية البيئة</h2>
+                <p>المحافظة على الغابات، مراقبة التصحر، تتبع تغير المناخ، إدارة المياه والموارد الطبيعية - كل هذا يتطلب GIS. صور الأقمار الصناعية تكشف التغيرات البيئية قبل أن تصبح كارثية، مما يعطي الحكومات وقتاً للتدخل.</p>
+            </div>
+        </section>
+
+        <section id="s14" class="step" data-step="s14">
+            <div class="narrative-panel">
+                <h2>GIS والصحة العامة والأوبئة</h2>
+                <p>انتشار الأمراض لا يحدث بشكل عشوائي. GIS يكشف الأنماط المكانية: هل تتركز الحالات في منطقة معينة؟ هل هناك علاقة بجودة الماء أو القرب من مصدر تلوث؟ هذا يساعد الفرق الصحية على توجيه جهودهم بكفاءة.</p>
+            </div>
+        </section>
+
+        <section id="s15" class="step" data-step="s15">
+            <div class="narrative-panel">
+                <h2>GIS والأمن القومي والدفاع</h2>
+                <p>استراتيجيات الدفاع تعتمد على فهم العمق الاستراتيجي للأراضي. GIS يوفر تحليلات التضاريس المعقدة، تتبع التحركات، إدارة الموارد العسكرية، والتخطيط للعمليات الدفاعية بدقة عسكرية عالية.</p>
+            </div>
+        </section>
+
+        <section id="s16" class="step" data-step="s16">
+            <div class="narrative-panel">
+                <h2>GIS والبنية التحتية</h2>
+                <p>شبكات الطرق والسكك الحديدية والأنابيب والكهرباء - كل هذا يتطلب GIS للتخطيط والمراقبة. كيف تمد خط طريق جديد دون تضرير المباني المجاورة؟ GIS يجيب على هذه الأسئلة بدقة عالية.</p>
+            </div>
+        </section>
+
+        <section id="s17" class="step" data-step="s17">
+            <div class="narrative-panel">
+                <h2>GIS والتطبيقات الاقتصادية</h2>
+                <p>فتح متجر جديد: أين يكون أنجح؟ GIS يحلل الموقع بناءً على السكان القريبين، المنافسة، سهولة الوصول، الدخل الفردي. الشركات الكبرى تدفع ملايين الدولارات مقابل تحليلات GIS صحيحة.</p>
+            </div>
+        </section>
+
+        <section id="s18" class="step" data-step="s18">
+            <div class="narrative-panel">
+                <h2>GIS والزراعة الدقيقة (Precision Agriculture)</h2>
+                <p>المزارع الحديثة تستخدم بيانات الأقمار الصناعية و GIS: أي جزء من الحقل يحتاج مياه أكثر؟ أي مناطق تعاني من الإرهاق الآفات؟ النتيجة: محاصيل أفضل واستهلاك أقل للموارد.</p>
+            </div>
+        </section>
+
+        <section id="s19" class="step" data-step="s19">
+            <div class="narrative-panel">
+                <h2>GIS في الاستجابة للأزمات والكوارث</h2>
+                <p>عند حدوث فيضان أو زلزال: أين المناطق الأكثر تضررًا؟ أين يحتاج الإغاثة؟ GIS يوفر خرائط لحظية تساعد الفريق الاستجابية على توجيه جهودهم بسرعة وكفاءة عالية.</p>
+            </div>
+        </section>
+
+        <section id="s20" class="step" data-step="s20">
+            <div class="narrative-panel">
+                <h2>مكونات نظام GIS: الأجهزة (Hardware)</h2>
+                <p>الأجهزة تشمل: أجهزة كمبيوتر قوية لمعالجة البيانات الضخمة، خوادم لتخزين قواعد البيانات الكبيرة، أجهزة GPS للتحديد الدقيق للمواقع، الأقمار الصناعية والطائرات المسيرة لالتقاط الصور. بدون أجهزة قوية، لا يمكن للـ GIS أن يعمل بكفاءة.</p>
+            </div>
+        </section>
+
+        <section id="s21" class="step" data-step="s21">
+            <div class="narrative-panel">
+                <h2>مكونات نظام GIS: البرمجيات (Software)</h2>
+                <p>البرمجيات تشمل ArcGIS (الأداة الاحترافية الأولى عالمياً)، QGIS (مفتوح المصدر ومجاني)، Google Earth، Mapbox. كل أداة لها نقاط قوة مختلفة. في هذه الدورة نركز على أساسيات GIS لأنها عامة على جميع الأدوات.</p>
+            </div>
+        </section>
+
+        <section id="s22" class="step" data-step="s22">
+            <div class="narrative-panel">
+                <h2>مكونات نظام GIS: البيانات (Data)</h2>
+                <p>البيانات هي أساس كل تحليل GIS. مصادرها: الأقمار الصناعية (مجانية من وكالات الفضاء)، الحكومات (خرائط رسمية)، الجماعات التطوعية (OpenStreetMap)، قياسات ميدانية مباشرة (GPS). البيانات الجيدة = تحليلات موثوقة.</p>
+            </div>
+        </section>
+
+        <section id="s23" class="step" data-step="s23">
+            <div class="narrative-panel">
+                <h2>مكونات نظام GIS: العنصر البشري (People)</h2>
+                <p>الأشخاص الذين يستخدمون GIS هم الأهم: جغرافيون، مهندسون، محللون، متخذو قرار. جودة التحليل تعتمد على كفاءة الشخص وفهمه للمشكلة والبيانات. حتى أفضل البرمجيات لا تستطيع تعويض الإنسان الغير مدرب.</p>
+            </div>
+        </section>
+
+        <section id="s24" class="step" data-step="s24">
+            <div class="narrative-panel">
+                <h2>مكونات نظام GIS: الأساليب والعمليات (Methods)</h2>
+                <p>الأساليب العلمية لاستخلاص الأنماط والإجابة على الأسئلة: كيف نجمع البيانات؟ كيف ننقيها؟ كيف نحللها؟ كيف نعرضها بطريقة واضحة؟ العملية المنهجية تضمن نتائج موثوقة وقابلة للمراجعة.</p>
+            </div>
+        </section>
+
+        <section id="s25" class="step" data-step="s25">
+            <div class="narrative-panel">
+                <h2>الفرق بين الخريطة الورقية والخريطة الرقمية (GIS)</h2>
+                <p>الخريطة الورقية: ثابتة، محدودة التفاصيل، صعبة التعديل. الخريطة الرقمية: حية، تفاعلية، قابلة للتحديث اللحظي، تسمح بطبقات متعددة وتحليلات معقدة. العالم يتطور بسرعة، والخرائط الرقمية وحدها قادرة على مواكبة هذا التطور.</p>
+            </div>
+        </section>
+
+        <section id="s26" class="step" data-step="s26">
+            <div class="narrative-panel">
+                <h2>أهداف هذه الوحدة الأكاديمية</h2>
+                <p>الهدف الأول: فهم عميق لمفاهيم GIS والبيانات الجغرافية في سياقها الأكاديمي. الهدف الثاني: استيعاب تطبيقات عملية حقيقية في حياتنا. الهدف الثالث: تطوير التفكير المكاني والقدرة على تحليل المشاكل جغرافياً.</p>
+            </div>
+        </section>
+
+        <section id="s27" class="step" data-step="s27">
+            <div class="narrative-panel">
+                <h2>المهارات التي ستكتسبها</h2>
+                <p>بنهاية البرنامج: (1) قراءة وتفسير الخرائط الرقمية، (2) جمع وتنظيم البيانات الجغرافية، (3) إجراء تحليلات مكانية بسيطة، (4) إنتاج خرائط احترافية، (5) العمل مع برمجيات GIS الحديثة. هذه مهارات مطلوبة جداً في سوق العمل.</p>
+            </div>
+        </section>
+
+        <section id="s28" class="step" data-step="s28">
+            <div class="narrative-panel">
+                <h2>التمرين الأول: قراءة الخريطة</h2>
+                <p>المهمة: افتح أي خريطة (Google Maps مثلاً) واختر حي قريب منك. حاول تحديد: أين الطرق الرئيسية؟ أين المدارس والمستشفيات؟ هل توجد مناطق خضراء؟ كيف توزعت المباني؟ هذا التمرين يطور حسك المكاني.</p>
+            </div>
+        </section>
+
+        <section id="s29" class="step" data-step="s29">
+            <div class="narrative-panel">
+                <h2>التمرين الثاني: جمع البيانات</h2>
+                <p>اختر مشكلة بسيطة قريبة منك (مثل: توزيع الحدائق في حيك). جمع بيانات بسيطة: أين الحديقة؟ ما مساحتها تقريباً؟ هل هي نظيفة؟ هذا التمرين يعلمك أن البيانات لا تأتي من السماء، بل تجمع بجهد ومنهجية.</p>
+            </div>
+        </section>
+
+        <section id="s30" class="step" data-step="s30">
+            <div class="narrative-panel">
+                <h2>التمرين الثالث: التحليل البسيط</h2>
+                <p>بناءً على البيانات التي جمعتها: هل الحدائق موزعة بشكل عادل؟ هل بعض المناطق محرومة من المساحات الخضراء؟ قارن الخريطة بتدفق السكان. هذا تحليل مكاني بسيط لكن قوي جداً.</p>
+            </div>
+        </section>
+
+        <section id="s31" class="step" data-step="s31">
+            <div class="narrative-panel">
+                <h2>المشروع الأول: خريطة حيك</h2>
+                <p>المشروع: رسم خريطة بسيطة لحيك باستخدام Google My Maps (مجاني على Google)، أضف طبقات: الطرق، المباني المهمة، المناطق الخضراء، المشاكل البيئية. لا تحتاج مهارات متقدمة، بل الفهم الجغرافي والدقة.</p>
+            </div>
+        </section>
+
+        <section id="s32" class="step" data-step="s32">
+            <div class="narrative-panel">
+                <h2>معايير تقييم المشروع الأول</h2>
+                <p>1. الدقة الموقعية: هل الموقع صحيح على الخريطة؟ 2. الوضوح: هل الخريطة سهلة الفهم؟ 3. الكمال: هل غطيت كل الطبقات المطلوبة؟ 4. الاحترافية: هل تبدو الخريطة احترافية (ألوان، رموز)؟</p>
+            </div>
+        </section>
+
+        <section id="s33" class="step" data-step="s33">
+            <div class="narrative-panel">
+                <h2>تاريخ GIS: الجذور التاريخية</h2>
+                <p>GIS كمفهوم يرجع إلى جون سنو (1854) الذي رسم خريطة يدوية لحالات الكوليرا في لندن. في الستينيات، قامت كندا بأول نظام محوسب (CGIS). في الثمانينيات، أسس Esri شركته التي غيرت وجه العالم.</p>
+            </div>
+        </section>
+
+        <section id="s34" class="step" data-step="s34">
+            <div class="narrative-panel">
+                <h2>تطور GIS عبر العقود</h2>
+                <p>1960s: أول GIS محوسب في كندا. 1980s: Esri يطلق ArcGIS. 1990s: GIS يدخل الويب والهواتف. 2000s: عصر البيانات الضخمة والأقمار الصناعية عالية الدقة. 2020s: GIS مع الذكاء الاصطناعي والتحليليات الآنية.</p>
+            </div>
+        </section>
+
+        <section id="s35" class="step" data-step="s35">
+            <div class="narrative-panel">
+                <h2>المستقبل: GIS والذكاء الاصطناعي</h2>
+                <p>المستقبل القريب سيشهد دمج AI مع GIS: توقع النمو العمراني قبل حدوثه، كشف الحرائق والكوارث تلقائياً، تحسين تخطيط المدن بذكاء، إدارة الموارد بكفاءة عالية. أنت ستكون شاهداً على هذه الثورة.</p>
+            </div>
+        </section>
+
+        <section id="s36" class="step" data-step="s36">
+            <div class="narrative-panel">
+                <h2>وظائف المستقبل في مجال GIS</h2>
+                <p>الفرص الوظيفية كثيرة ومتنوعة: محلل GIS (تحليل بيانات)، مطور GIS (بناء تطبيقات)، مهندس خريطة (تصميم خرائط احترافية)، مدير مشاريع GIS (إدارة مشاريع ضخمة)، استشاري GIS (تقديم حلول للشركات).</p>
+            </div>
+        </section>
+
+        <section id="s37" class="step" data-step="s37">
+            <div class="narrative-panel">
+                <h2>المتطلبات التقنية للبرنامج</h2>
+                <p>لا تحتاج إلى أجهزة باهظة الثمن. كمبيوتر عادي أو حتى هاتف ذكي يكفي للتعلم الأولي. في الوحدات المتقدمة قد نحتاج لأجهزة أقوى قليلاً. المهم هو الرغبة في التعلم والفضول العلمي.</p>
+            </div>
+        </section>
+
+        <section id="s38" class="step" data-step="s38">
+            <div class="narrative-panel">
+                <h2>الموارد المجانية والمفتوحة المصدر</h2>
+                <p>QGIS: برمجية احترافية مجانية. OpenStreetMap: خرائط مفتوحة المصدر. Google Earth و Google My Maps: مجانية ومجربة. Sentinel Hub: صور أقمار صناعية مجاني. كل أدواتك في متناول يدك بدون تكاليف.</p>
+            </div>
+        </section>
+
+        <section id="s39" class="step" data-step="s39">
+            <div class="narrative-panel">
+                <h2>كيفية الاستفادة من هذا البرنامج؟</h2>
+                <p>1. اقضِ وقتاً في فهم كل مفهوم جغرافي. 2. مارس التمارين بجدية (التطبيق أهم من المعرفة النظرية). 3. ابدأ بمشاريع صغيرة بسيطة قبل الانتقال للمشاريع الكبيرة. 4. لا تتردد في السؤال والبحث عن الإجابات.</p>
+            </div>
+        </section>
+
+        <section id="s40" class="step" data-step="s40">
+            <div class="narrative-panel">
+                <h2>التحديات والصعوبات المتوقعة</h2>
+                <p>قد تواجه: بيانات ناقصة أو غير دقيقة، أخطاء في الإحداثيات، برمجيات معقدة في البداية. كل هذا طبيعي. الحل: الصبر والممارسة المستمرة. في الوحدات المتقدمة ستصبح هذه الأمور سهلة.</p>
+            </div>
+        </section>
+
+        <section id="s41" class="step" data-step="s41">
+            <div class="narrative-panel">
+                <h2>الأسئلة الشائعة: هل أحتاج خبرة سابقة؟</h2>
+                <p>لا، هذا البرنامج مصمم للمبتدئين. ننطلق من الصفر. لكن ستستفيد أكثر إذا أنهيت دورة في الجغرافيا الأساسية أو الإحصائيات. حتى بدونهما، يمكنك النجاح إذا كنت منظماً وملتزماً.</p>
+            </div>
+        </section>
+
+        <section id="s42" class="step" data-step="s42">
+            <div class="narrative-panel">
+                <h2>الأسئلة الشائعة: كم من الوقت يستغرق التعلم؟</h2>
+                <p>لفهم أساسيات GIS: 40-50 ساعة (هذا البرنامج). لكن الإتقان والعمل الاحترافي: يستغرق سنوات من الممارسة المستمرة. كل خبراء اليوم بدآوا من هنا، ومرّوا بنفس المرحلة.</p>
+            </div>
+        </section>
+
+        <section id="s43" class="step" data-step="s43">
+            <div class="narrative-panel">
+                <h2>أخلاقيات استخدام GIS والبيانات</h2>
+                <p>مع قوة GIS تأتي مسؤولية: احترام خصوصية الأفراد، عدم إساءة استخدام موقع الناس، دقة البيانات وعدم تشويهها عمداً، الاستخدام الأخلاقي للتكنولوجيا. كن محللاً مسؤولاً.</p>
+            </div>
+        </section>
+
+        <section id="s44" class="step" data-step="s44">
+            <div class="narrative-panel">
+                <h2>GIS من أجل الصالح العام</h2>
+                <p>GIS يمكن أن يحقق الخير: تحسين خدمات العامة، تقليل الفقر بتحليل أفضل، حماية البيئة، مساعدة المجتمعات الضعيفة. اختر أن تستخدم مهاراتك في الـ GIS لصالح المجتمع والإنسانية.</p>
+            </div>
+        </section>
+
+        <section id="s45" class="step" data-step="s45">
+            <div class="narrative-panel">
+                <h2>ملخص الأفكار الرئيسية</h2>
+                <p>GIS هو أداة قوية لفهم العالم. البيانات الجغرافية موجودة في كل مكان. التحليل المكاني يحل مشاكل حقيقية. التطبيقات العملية لا حصر لها. أنت الآن مستعد للانطلاق في هذه الرحلة المثيرة.</p>
+            </div>
+        </section>
+
+        <section id="s46" class="step" data-step="s46">
+            <div class="narrative-panel">
+                <h2>الخطوات التالية</h2>
+                <p>الآن أنت تفهم الأساسيات. الخطوة التالية: الممارسة العملية. سننتقل إلى الوحدة الثانية حيث ستعمل مباشرة مع البيانات الجغرافية الحقيقية وستجمعها بنفسك.</p>
+            </div>
+        </section>
+
+        <section id="s47" class="step" data-step="s47">
+            <div class="narrative-panel">
+                <h2>نصيحتي الشخصية</h2>
+                <p>لا تستعجل. كل مفهوم جديد قد يكون غامضاً في البداية، لكنه سيصبح واضحاً مع التطبيق. GIS ليس شيئاً تحفظه، بل شيء تفهمه وتمارسه. اجعل الممارسة عادتك.</p>
+            </div>
+        </section>
+
+        <section id="s48" class="step" data-step="s48">
+            <div class="narrative-panel">
+                <h2>موارد إضافية للقراءة</h2>
+                <p>كتاب: "Getting to Know ArcGIS Pro" من Esri. موقع: esri.com (ألوف الدروس المجانية). قناة YouTube: "Esri" توفر شروحات احترافية. مجتمع: المنتديات والمجموعات تساعد في الحوار والتعلم.</p>
+            </div>
+        </section>
+
+        <section id="s49" class="step fullscreen" data-step="s49">
+            <div class="content-box">
+                <h1 style="color: #10b981;">أتممت الوحدة الأولى بنجاح! 🎉</h1>
+                <p>لقد وضعت أساساً قوياً في فهم GIS والبيانات الجغرافية. أنت الآن مستعد للخطوة التالية.</p>
+                <div style="margin-top: 30px;"><a href="day2.html" class="nav-btn" style="text-decoration: none;">الوحدة الثانية ➔</a></div>
+            </div>
+        </section>
+
+        <section id="s50" class="step fullscreen" data-step="s50">
+            <div class="content-box">
+                <h2>انتظرنا في الوحدة الثانية...</h2>
+                <p>سنتعمق أكثر في البيانات الجغرافية وكيفية إدارتها وتنظيمها. اسم الوحدة: "البيانات الجغرافية وإدارتها"</p>
+            </div>
+        </section>
+    </main>
+
+    <div class="story-nav">
+        <button id="prev-btn" class="nav-btn" disabled>السابق</button>
+        <button id="next-btn" class="nav-btn">التالي</button>
+        <button id="restart-btn" class="nav-btn">إعادة</button>
+    </div>
+
+    <script type="module">
+        import L from 'https://esm.sh/leaflet';
+
+        const map = L.map('map', {
+            zoomControl: false, scrollWheelZoom: false, dragging: false,
+            attributionControl: false, doubleClickZoom: false
+        }).setView([34.8021, 38.9968], 7);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png').addTo(map);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', { zIndex: 1000 }).addTo(map);
+        const analysisLayer = L.layerGroup().addTo(map);
+
+        const tooltipBox = document.getElementById("map-tooltip");
+        const progressBar = document.getElementById("progress-bar");
+        const iconsContainer = document.getElementById("step-icons");
+        const stepCounter = document.getElementById("step-counter");
+
+        function setTooltip(text) { tooltipBox.innerHTML = text; }
+        function clear() { analysisLayer.clearLayers(); }
+
+        for (let i = 1; i <= 50; i++) {
+            const icon = document.createElement('div');
+            icon.className = 'step-icon'; icon.innerText = i; icon.id = `icon-s${i}`;
+            icon.onclick = () => document.getElementById(`s${i}`)?.scrollIntoView({ behavior: 'smooth' });
+            iconsContainer.appendChild(icon);
+        }
+
+        const actions = {
+            s1: () => { clear(); map.flyTo([20, 0], 2); setTooltip("مرحباً! الوحدة الأولى: مقدمة GIS"); },
+            s2: () => { clear(); setTooltip("أهداف التعلم لهذه الوحدة"); },
+            s3: () => { clear(); map.flyTo([34.8021, 38.9968], 5); setTooltip("الجغرافيا في عصرنا"); },
+            s4: () => { clear(); setTooltip("تعريف GIS"); },
+            s5: () => { clear(); map.flyTo([0, 0], 1); setTooltip("لماذا نحتاج GIS؟"); },
+            s6: () => { clear(); setTooltip("أنواع البيانات الجغرافية"); },
+            s7: () => { clear(); setTooltip("الإحداثيات والموقع"); },
+            s8: () => { clear(); setTooltip("الطبقات الجغرافية"); },
+            s9: () => { clear(); setTooltip("الاستشعار عن بعد"); },
+            s10: () => { clear(); setTooltip("قواعد البيانات الجغرافية"); },
+            s11: () => { clear(); setTooltip("البيانات الصغيرة vs الكبيرة"); },
+            s12: () => { clear(); map.flyTo([25.2048, 55.2708], 10); setTooltip("GIS والتخطيط الحضري"); },
+            s13: () => { clear(); setTooltip("GIS والبيئة"); },
+            s14: () => { clear(); setTooltip("GIS والصحة"); },
+            s15: () => { clear(); setTooltip("GIS والأمن"); },
+            s16: () => { clear(); setTooltip("GIS والبنية التحتية"); },
+            s17: () => { clear(); setTooltip("التطبيقات الاقتصادية"); },
+            s18: () => { clear(); setTooltip("الزراعة الدقيقة"); },
+            s19: () => { clear(); map.flyTo([34.0522, -118.2437], 8); setTooltip("الاستجابة للكوارث"); },
+            s20: () => { clear(); setTooltip("مكونات GIS: الأجهزة"); },
+            s21: () => { clear(); setTooltip("مكونات GIS: البرمجيات"); },
+            s22: () => { clear(); setTooltip("مكونات GIS: البيانات"); },
+            s23: () => { clear(); setTooltip("مكونات GIS: الناس"); },
+            s24: () => { clear(); setTooltip("مكونات GIS: الأساليب"); },
+            s25: () => { clear(); map.setZoom(5); setTooltip("الخريطة الورقية vs الرقمية"); },
+            s26: () => { clear(); setTooltip("أهداف الوحدة"); },
+            s27: () => { clear(); setTooltip("المهارات التي ستكتسبها"); },
+            s28: () => { clear(); setTooltip("التمرين الأول: قراءة الخريطة"); },
+            s29: () => { clear(); setTooltip("التمرين الثاني: جمع البيانات"); },
+            s30: () => { clear(); setTooltip("التمرين الثالث: التحليل"); },
+            s31: () => { clear(); setTooltip("المشروع الأول"); },
+            s32: () => { clear(); setTooltip("معايير التقييم"); },
+            s33: () => { clear(); setTooltip("تاريخ GIS"); },
+            s34: () => { clear(); setTooltip("تطور GIS عبر العقود"); },
+            s35: () => { clear(); map.setZoom(3); setTooltip("المستقبل: GIS والـ AI"); },
+            s36: () => { clear(); setTooltip("وظائف المستقبل"); },
+            s37: () => { clear(); setTooltip("المتطلبات التقنية"); },
+            s38: () => { clear(); setTooltip("الموارد المجانية"); },
+            s39: () => { clear(); setTooltip("كيفية الاستفادة"); },
+            s40: () => { clear(); setTooltip("التحديات المتوقعة"); },
+            s41: () => { clear(); setTooltip("أسئلة شائعة"); },
+            s42: () => { clear(); setTooltip("كم من الوقت يستغرق؟"); },
+            s43: () => { clear(); setTooltip("أخلاقيات GIS"); },
+            s44: () => { clear(); setTooltip("GIS من أجل الخير"); },
+            s45: () => { clear(); setTooltip("الأفكار الرئيسية"); },
+            s46: () => { clear(); setTooltip("الخطوات التالية"); },
+            s47: () => { clear(); setTooltip("نصيحة شخصية"); },
+            s48: () => { clear(); setTooltip("موارد إضافية"); },
+            s49: () => { clear(); map.flyTo([24.7136, 46.6753], 4); setTooltip("تهانينا! أتممت الوحدة بنجاح"); },
+            s50: () => { clear(); map.flyTo([34.8021, 38.9968], 6); setTooltip("نلتقي في الوحدة الثانية"); }
+        };
+
+        const steps = document.querySelectorAll(".step");
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const id = entry.target.id;
+                    const num = parseInt(id.replace('s', ''));
+                    progressBar.style.width = (num / 50 * 100) + "%";
+                    if (actions[id]) actions[id]();
+                    steps.forEach(s => s.classList.remove('active'));
+                    entry.target.classList.add('active');
+                    document.querySelectorAll('.step-icon').forEach(icon => {
+                        const iconNum = parseInt(icon.id.replace('icon-s', ''));
+                        icon.classList.toggle('active', iconNum === num);
+                        icon.classList.toggle('done', iconNum < num);
+                    });
+                    stepCounter.innerText = `${num} / 50`;
+                    
+                    const activeIcon = document.getElementById(`icon-s${num}`);
+                    if(activeIcon) {
+                        activeIcon.scrollIntoView({behavior: "smooth", inline: "center", block: "nearest"});
+                    }
+                    
+                    document.getElementById('prev-btn').disabled = (num === 1);
+                    document.getElementById('next-btn').disabled = (num === 50);
+                }
+            });
+        }, { threshold: 0.6 });
+
+        steps.forEach(s => observer.observe(s));
+
+        document.getElementById('next-btn').onclick = () => [...steps].find(s => s.classList.contains('active'))?.nextElementSibling?.scrollIntoView({ behavior: 'smooth' });
+        document.getElementById('prev-btn').onclick = () => [...steps].find(s => s.classList.contains('active'))?.previousElementSibling?.scrollIntoView({ behavior: 'smooth' });
+        document.getElementById('restart-btn').onclick = () => steps[0].scrollIntoView({ behavior: 'smooth' });
+    </script>
+</body>
+
+</html>
